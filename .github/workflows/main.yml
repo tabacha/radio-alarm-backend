@@ -1,0 +1,18 @@
+name: Build Package
+on:
+  create:
+    tags:
+    - 'v[0-9]+.[0-9]+.[0-9]+*'
+jobs:
+  build-debs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: jtdor/build-deb-action@v1
+        with:
+          artifacts-dir: .
+      - name: Push Build to Releases
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "radio-alarm*.deb"
+          token: ${{ secrets.TOKEN }}
