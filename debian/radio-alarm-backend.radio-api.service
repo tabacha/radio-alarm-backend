@@ -1,0 +1,18 @@
+[Unit]
+Description=Radio Api Service
+
+[Service]
+
+Type=simple
+WorkingDirectory=/usr/share/radio
+ExecStart=/usr/bin/gunicorn -w 1 --bind 0.0.0.0:4999 radio-api:app
+User=radio-api
+Restart=always
+RestartSec=2
+
+TasksMax=4
+MemoryMax=90000
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

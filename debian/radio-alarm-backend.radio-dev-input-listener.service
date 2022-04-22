@@ -1,0 +1,17 @@
+[Unit]
+Description=Radio /dev/input listener
+
+[Service]
+
+Type=simple
+ExecStart=/usr/share/radio/radio-dev-input-listener.py
+
+Restart=always
+RestartSec=2
+
+TasksMax=2
+MemoryMax=3000
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

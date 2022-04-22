@@ -1,0 +1,23 @@
+[Unit]
+Description=Radio Audio Service
+
+[Service]
+
+Type=simple
+ExecStart=/usr/share/radio/radio-audio.py
+Restart=always
+RestartSec=5
+
+User=radioplay
+TasksMax=4
+MemoryMax=90000
+#DeviceAllow=/dev/snd/*
+#DeviceAllow=/dev/shm/
+#DeviceAllow=/dev/urandom
+#PrivateTmp=yes
+#ProtectKernelTunables=true
+#ProtectHome=true
+#PrivateNetwork=true
+
+[Install]
+WantedBy=multi-user.target

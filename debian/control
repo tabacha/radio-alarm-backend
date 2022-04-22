@@ -1,0 +1,12 @@
+Source: radio-alarm-backend
+Section: embedded
+Priority: optional
+Maintainer: Sven Anders <sven@anders-hamburg.de>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.5.1
+Homepage: https://github.com/tabacha/radio-alarm-backend
+
+Package: radio-alarm-backend
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Raperby PI DAB Radio Backend

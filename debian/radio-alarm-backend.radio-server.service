@@ -1,0 +1,20 @@
+[Unit]
+Description=Radio Server
+
+[Service]
+
+Type=simple
+ExecStart=/usr/share/radio/radio-server.py
+Restart=always
+RestartSec=5
+
+User=radio-server
+#TasksMax=4
+#MemoryMax=90000
+#PrivateTmp=yes
+#ProtectKernelTunables=true
+#ProtectHome=true
+#PrivateNetwork=true
+
+[Install]
+WantedBy=multi-user.target
