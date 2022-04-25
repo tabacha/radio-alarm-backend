@@ -1,5 +1,6 @@
 [Unit]
 Description=Radio Api Service
+After=rabbitmq-server.service,radio-dab.service
 
 [Service]
 

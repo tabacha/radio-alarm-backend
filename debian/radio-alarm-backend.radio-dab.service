@@ -1,5 +1,6 @@
 [Unit]
 Description=Radio DAB Service
+After=rabbitmq-server.service,radio-server.service
 
 [Service]
 

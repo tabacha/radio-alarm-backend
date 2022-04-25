@@ -32,7 +32,11 @@ def radio_cli(params, boot=False):
         logger.info('radio_cli start [%s]' ,(','.join(args)))
         out_str = subprocess.run(args, capture_output=True)
         logger.info('radio_cli stdout: %s',out_str.stdout)
-    rtn=json.loads(out_str.stdout)
+    try:
+        rtn=json.loads(out_str.stdout)
+    except json.decoder.JSONDecodeError as err:
+        logger.exception(err)
+        rtn={}
     return rtn
 
 def radio_off():

@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 RADIO_ACTIONS_QUEUE="radio_actions"
 RADIO_BROADCAST_EXCHANGE="radio_broadcast"
-DATA_FILENAME="/usr/local/share/radio/radio-server/ctx_data.json"
+DATA_FILENAME="/usr/share/radio/radio-server/ctx_data.json"
 ctx_data={}
 radio_station_list=[]
 

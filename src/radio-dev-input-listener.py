@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import evdev
 import json
 import requests
@@ -6,9 +6,7 @@ import logging
 import radio_common
 logger = logging.getLogger(__name__)
 
-data_file='/usr/local/share/radio-server.json'
-with open(data_file) as json_file:
-    ctx_data = json.load(json_file)
+radio_common.cfg_logging()
 
 base_url="http://127.0.0.1:4999/"
 vol_up_url="%s/api/audio/volumestep/up" % base_url

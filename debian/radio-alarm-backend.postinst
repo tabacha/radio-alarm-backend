@@ -8,9 +8,12 @@ set -e
 
 case "$1" in
     configure)
-        useradd --system radioplay -m --home /usr/share/radio/radioplay -G audio -s /bin/false
-        useradd --system radio-api -m --home /usr/share/radio/radio-api -s /bin/false
-        useradd --system radio-server -m --home /usr/share/radio/radio-server -s /bin/false
+         getent passwd radioplay || useradd \
+            --system radioplay -m --home /usr/share/radio/radioplay -G audio -s /bin/false
+        getent passwd radio-api || useradd \
+            --system radio-api -m --home /usr/share/radio/radio-api -s /bin/false
+        getent passwd radio-server || useradd \
+            --system radio-server -m --home /usr/share/radio/radio-server -s /bin/false
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
