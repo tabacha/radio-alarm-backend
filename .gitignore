@@ -6,3 +6,4 @@ debian/radio-alarm-backend.debhelper.log
 debian/radio-alarm-backend.postrm.debhelper
 debian/radio-alarm-backend.substvars
 debian/radio-alarm-backend/
+src/__pycache__/
