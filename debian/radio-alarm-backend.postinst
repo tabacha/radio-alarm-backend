@@ -14,6 +14,9 @@ case "$1" in
             --system radio-api -m --home /usr/share/radio/radio-api -s /bin/false
         getent passwd radio-server || useradd \
             --system radio-server -m --home /usr/share/radio/radio-server -s /bin/false
+        chown radio-server /usr/share/radio/radio-server
+        chown radio-api /usr/share/radio/radio-api
+        chown radioplay /usr/share/radio/radioplay
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
