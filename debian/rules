@@ -16,6 +16,7 @@ override_dh_installsystemd:
 	dh_installsystemd --name=radio-dab
 	dh_installsystemd --name=radio-server
 	dh_installsystemd --name=radio-dev-input-listener
+	dh_installsystemd --name=radio-display
 
 #override_dh_auto_install:
 #       dh_auto_install -- prefix=/usr
@@ -29,4 +30,5 @@ override_dh_fixperms:
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-api.py
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-dab.py
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-server.py
+	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-display.py
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-dev-input-listener.py

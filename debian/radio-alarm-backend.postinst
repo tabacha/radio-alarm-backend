@@ -8,15 +8,18 @@ set -e
 
 case "$1" in
     configure)
-         getent passwd radioplay || useradd \
+        getent passwd radioplay || useradd \
             --system radioplay -m --home /usr/share/radio/radioplay -G audio -s /bin/false
         getent passwd radio-api || useradd \
             --system radio-api -m --home /usr/share/radio/radio-api -s /bin/false
         getent passwd radio-server || useradd \
             --system radio-server -m --home /usr/share/radio/radio-server -s /bin/false
+        getent passwd radio-display || useradd \
+            --system radio-display -m --home /usr/share/radio/radio-display -G i2c,kmem,gpio -s /bin/false
         chown radio-server /usr/share/radio/radio-server
         chown radio-api /usr/share/radio/radio-api
         chown radioplay /usr/share/radio/radioplay
+        chown radio-display /usr/share/radio/radio-display
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
