@@ -1,0 +1,21 @@
+[Unit]
+Description=Radio Display
+Wants=rabbitmq-server.service
+
+[Service]
+
+Type=simple
+ExecStart=/usr/share/radio/radio-display.py --hardware
+Restart=always
+RestartSec=5
+
+User=radio-display
+#TasksMax=4
+#MemoryMax=90000
+#PrivateTmp=yes
+#ProtectKernelTunables=true
+#ProtectHome=true
+#PrivateNetwork=true
+
+[Install]
+WantedBy=multi-user.target
