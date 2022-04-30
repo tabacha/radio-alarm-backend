@@ -25,7 +25,6 @@ override_dh_installsystemd:
 #       dh_install --list-missing -X.pyc -X.pyo
 override_dh_fixperms:
 	dh_fixperms
-	pwd
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-audio.py
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-api.py
 	chmod 755 debian/radio-alarm-backend/usr/share/radio/radio-dab.py
