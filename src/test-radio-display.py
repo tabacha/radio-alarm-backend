@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 import gpiodev
-import time
-from copy import deepcopy
+from time import sleep
+import argparse
 
 class AbstractMenuEntry():
 
@@ -176,7 +176,7 @@ def doNothing():
 
 def setSender(sender):
     print(sender)
-    time.sleep(3)
+    sleep(3)
 
 def saveEinmalig(wzId:int):
     pass
@@ -200,7 +200,7 @@ def createUhrzeitMenu(dev, wzId:int):
     def setzeH(new_h:int):
         nonlocal h,dm
         print(new_h)
-        time.sleep(2)
+        sleep(2)
         h=new_h
         dm_arr=[]
         for i in range(0,6):
@@ -219,7 +219,7 @@ def createWeckzeitMenu(wzId:int,dev):
     def saveWzTag(tag):
         nonlocal wzId
         print("%s %d" %(tag,wzId))
-        time.sleep(1)
+        sleep(1)
     uhrMenu=createUhrzeitMenu(dev,wzId)
     tag_arr=[]
     for tag in ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']:
@@ -260,7 +260,7 @@ def mainMenu(dev):
         )
     wzAuwahlMenu=MenuEntryScreen(dev,wzAuswahlMenuEntries)
     menuList=[
-        StaticTitleMenuEntry('Lautstärke',volScreen.run),
+        StaticTitleMenuEntry('Lautstaerke',volScreen.run),
         StaticTitleMenuEntry('Sender',lambda: runSenderMenu(dev)),
         StaticTitleMenuEntry('Weckzeit',wzAuwahlMenu.run),
         OnOffMenuEntry('Radio an/aus', doNothing),
@@ -269,7 +269,14 @@ def mainMenu(dev):
     m.run()
 
 def main():
-    myDev=gpiodev.TestGPIODev()
+    parser = argparse.ArgumentParser(description='Test GPIO Menu')
+    parser.add_argument('--hardware', help='Use Hardware GPIO', action='store_const',
+                    const=True, default=False)
+    args=parser.parse_args()
+    if args.hardware:
+        myDev=gpiodev.RealGPIODev(addr=0x27,bus=1)
+    else:
+        myDev=gpiodev.TestGPIODev()
     mainMenu(myDev)
 
 main()
