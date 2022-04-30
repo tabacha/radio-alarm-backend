@@ -1,6 +1,6 @@
 [Unit]
 Description=Radio Server
-After=rabbitmq-server.service
+Wants=rabbitmq-server.service
 
 [Service]
 

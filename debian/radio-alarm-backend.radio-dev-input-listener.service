@@ -1,6 +1,6 @@
 [Unit]
 Description=Radio /dev/input listener
-After=rabbitmq-server.service
+Wants=rabbitmq-server.service
 
 [Service]
 

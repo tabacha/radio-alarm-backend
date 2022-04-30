@@ -1,6 +1,7 @@
 [Unit]
 Description=Radio Audio Service
-After=rabbitmq-server.service,radio-dab.service
+Wants=rabbitmq-server.service
+Wants=radio-dab.service
 
 [Service]
 
