@@ -8,5 +8,5 @@ Homepage: https://github.com/tabacha/radio-alarm-backend
 
 Package: radio-alarm-backend
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, python3-flask-socketio, python3-flask, python3-flask-httpauth, python3-flask-restful, gunicorn,python3-evdev,python3-rpi.gpio
 Description: Raperby PI DAB Radio Backend

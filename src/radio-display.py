@@ -3,7 +3,9 @@
 import gpiodev
 from time import sleep
 import argparse
+from datetime import datetime
 
+WOCHENTAG=['Mo','Di','Mi','Do','Fr','Sa','So']
 class AbstractMenuEntry():
 
     def getTitle(self)->str:
@@ -57,6 +59,8 @@ class AbstractGpioScreen():
     def __init__(self, gpdev:gpiodev.GPIOBaseDev):
         self.gpdev=gpdev
         self.is_running=True
+        self.timeout_in_secs=120
+
     def buttonFunc(self):
         pass
 
@@ -66,8 +70,12 @@ class AbstractGpioScreen():
     def rightFunc(self):
         pass
 
+    def timeoutFunc(self):
+        pass
+
     def printScreen(self):
         pass
+
 
     def exitFunc(self):
         self.is_running=False
@@ -77,14 +85,16 @@ class AbstractGpioScreen():
 
     def run(self):
         self.is_running=True
+        self.gpdev.clear()
         while self.running():
             self.printScreen()
             actionFunc= {
                 gpiodev.GPIO_INPUT.BUTTON: self.buttonFunc,
                 gpiodev.GPIO_INPUT.LEFT: self.leftFunc,
                 gpiodev.GPIO_INPUT.RIGHT: self.rightFunc,
+                gpiodev.GPIO_INPUT.TIMEOUT: self.timeoutFunc,
             }
-            k=self.gpdev.wait_for_gpio_event()
+            k=self.gpdev.wait_for_gpio_event(self.timeout_in_secs)
             actionFunc[k]()
 
 class MenuEntryScreen(AbstractGpioScreen):
@@ -103,8 +113,6 @@ class MenuEntryScreen(AbstractGpioScreen):
         if (add_back_entry):
             self.choices.append( StaticTitleMenuEntry('zurueck',self.exitFunc))
         super().__init__(gpdev)
-
-
 
     def buttonFunc(self):
         if (self.add_back_entry==False):
@@ -133,7 +141,11 @@ class MenuEntryScreen(AbstractGpioScreen):
             else:
                 self.offset=0
 
+    def timeoutFunc(self):
+        self.exitFunc()
+
     def printScreen(self):
+        self.gpdev.clear()
         for i in range(0,self.gpdev.get_number_of_lines()):
             if i+self.offset<len(self.choices):
                 if (i+self.offset)==self.idx:
@@ -151,7 +163,7 @@ class ValueScreen(AbstractGpioScreen):
         super().__init__(gpdev)
 
     def buttonFunc(self):
-        self.is_running=False
+        self.exitFunc()
 
     def leftFunc(self):
         if self.value>0:
@@ -162,6 +174,7 @@ class ValueScreen(AbstractGpioScreen):
             self.value+=1
 
     def printScreen(self):
+        self.gpdev.clear()
         self.gpdev.write_display_line(1,"%s %d %s" %(self.title,self.value,self.suffix))
         self.gpdev.write_display_line(2,"")
         self.gpdev.write_display_line(3,"")
@@ -170,6 +183,59 @@ class ValueScreen(AbstractGpioScreen):
         for i in range(1,numChars):
             str=str+"*"
         self.gpdev.write_display_line(4,str)
+
+class MainScreen(AbstractGpioScreen):
+    def __init__(self, gpdev:gpiodev.GPIOBaseDev):
+        super().__init__(gpdev=gpdev)
+        self.timeout_in_secs=0.5
+        self.night_mode_off_time_secs=60
+        self.displayOn=True
+        self.last_input_time=datetime.now()
+
+    def buttonFunc(self):
+        if self.isDisplayOn(datetime.now()):
+            self.exitFunc()
+        else:
+            self.last_input_time=datetime.now()
+
+    def leftFunc(self):
+        self.last_input_time=datetime.now()
+
+    def rightFunc(self):
+        self.last_input_time=datetime.now()
+
+    def isNightMode(self,now:datetime):
+        if now.hour<6:
+            return True
+        if now.hour==6 and now.minute<10:
+            return True
+        if now.hour>22:
+            return True
+        return False
+
+    def isDisplayOn(self,now:datetime):
+        if self.isNightMode(now):
+            return (now.timestamp()-self.last_input_time.timestamp())<self.night_mode_off_time_secs
+        else:
+            return True
+
+    def printScreen(self):
+        # datetime object containing current date and time
+        now = datetime.now()
+        if self.isDisplayOn(now):
+            self.gpdev.backlight(True)
+            weekday=WOCHENTAG[now.weekday()]
+            if (now.second==0):
+                self.gpdev.clear()
+            t_string = now.strftime("%H:%M:%S")
+            d_string = now.strftime("%d.%m.%y")
+            self.gpdev.write_display_line(1,"%s %s %s" %(t_string, weekday, d_string))
+            naechsterWecker='06:10 Mo. 10.05.22'
+            self.gpdev.write_display_line(2,"Naechster Wecker: ")
+            self.gpdev.write_display_line(3,"%s" % (naechsterWecker))
+            self.gpdev.write_display_line(4,"in 3h 10m + 55 Tagen")
+        else:
+            self.gpdev.backlight(False)
 
 def doNothing():
     pass
@@ -268,6 +334,12 @@ def mainMenu(dev):
     m=MenuEntryScreen(dev,menuList)
     m.run()
 
+def mainScreen(dev):
+    while True:
+        ms=MainScreen(dev)
+        ms.run()
+        mainMenu(dev)
+
 def main():
     parser = argparse.ArgumentParser(description='Test GPIO Menu')
     parser.add_argument('--hardware', help='Use Hardware GPIO', action='store_const',
@@ -277,6 +349,6 @@ def main():
         myDev=gpiodev.RealGPIODev(addr=0x27,bus=1)
     else:
         myDev=gpiodev.TestGPIODev()
-    mainMenu(myDev)
+    mainScreen(myDev)
 
 main()

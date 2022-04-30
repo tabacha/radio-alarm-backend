@@ -64,6 +64,7 @@ class GPIO_INPUT(Enum):
     LEFT=0
     RIGHT=1
     BUTTON=2
+    TIMEOUT=999
 
 class GPIOBaseDev(ABC):
 
@@ -71,9 +72,12 @@ class GPIOBaseDev(ABC):
     def write_display_line(self, line_no:int, line:str):
         pass
 
+    def clear(self):
+        pass
+
     @abstractmethod
-    def wait_for_gpio_event(self)->GPIO_INPUT:
-        return GPIO_INPUT.LEFT
+    def wait_for_gpio_event(self, timeout_secs:int)->GPIO_INPUT:
+        return GPIO_INPUT.TIMEOUT
 
     def get_number_of_lines(self)->int:
         return 4
@@ -84,12 +88,10 @@ class TestGPIODev(GPIOBaseDev):
         print(chr(27) + "[H" + chr(27) + "[J")
 
     def write_display_line(self,line_no:int, line:str):
-        if line_no==1:
-            self.clear()
         print(' '+line[:20])
 
 
-    def wait_for_gpio_event(self) -> GPIO_INPUT:
+    def wait_for_gpio_event(self, timeout_secs:int) -> GPIO_INPUT:
         while True:
             orig_settings = termios.tcgetattr(sys.stdin)
             tty.setcbreak(sys.stdin)
@@ -101,6 +103,8 @@ class TestGPIODev(GPIOBaseDev):
                 return GPIO_INPUT.LEFT
             elif (ch=="x") or (ch==' ') or (ch==chr(10)):
                 return GPIO_INPUT.BUTTON
+            elif (ch=='t'):
+                return GPIO_INPUT.TIMEOUT
             else:
                 print('Unbekanter Tastendruck %d "%s"',ord(ch),ch)
 
@@ -188,8 +192,8 @@ class RealGPIODev(GPIOBaseDev):
         sleep(.0001)
 
     def write_display_line(self, line: int, string:str):
+        short_string=string[:20]
         if line == 1:
-            self.clear()
             self.lcd_write(0x80)
         if line == 2:
             self.lcd_write(0xC0)
@@ -197,7 +201,7 @@ class RealGPIODev(GPIOBaseDev):
             self.lcd_write(0x94)
         if line == 4:
             self.lcd_write(0xD4)
-        for char in string:
+        for char in short_string:
             self.lcd_write(ord(char), Rs)
 
     # clear lcd and set to home
@@ -212,9 +216,13 @@ class RealGPIODev(GPIOBaseDev):
         else:
             self.lcd.write_cmd(LCD_NOBACKLIGHT)
 
-    def wait_for_gpio_event(self) -> GPIO_INPUT:
+    def wait_for_gpio_event(self,timeout_secs:int) -> GPIO_INPUT:
         self.ky040_event=None
-        while self.ky040_event==None:
+        remaining_secs=timeout_secs
+        while (self.ky040_event==None) and (remaining_secs>0):
             sleep(0.2)
+            remaining_secs-=0.2
+        if (self.ky040_event==None):
+            return GPIO_INPUT.TIMEOUT
         return self.ky040_event
         #FIXME self.ky040.stop()
