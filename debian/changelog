@@ -1,3 +1,9 @@
+radio-alarm-backend (0.0.4) UNRELEASED; urgency=medium
+
+  * change this
+
+ -- Sven Anders <sven@anders-hamburg.de>  Sat, 30 Apr 2022 10:45:47 +0200
+
 radio-alarm-backend (0.0.3) stable; urgency=medium
 
   * fix packaging error in 0.0.2
