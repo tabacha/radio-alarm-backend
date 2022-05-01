@@ -23,6 +23,9 @@ WT_DATA = {"1": {"name": "Weckzeit 1", "time": "5:42", "active": True, "monday":
 def getSender():
     return ['NDR 2', 'NDR 90,3', 'Radio Hamburg']
 
+def getActiveSender():
+    return 'NDR 2'
+
 def setSender(sender:str):
     print(sender)
     sleep(3)
@@ -51,6 +54,15 @@ def setWackeupTime(idx:int,wt):
 
 def doNothing():
     pass
+
+def getMainScreenData():
+    data={
+        'nextWakeupTime':datetime(2022,5,30,6,40,00),
+        'radioOn': isRadioOn(),
+        'station': getActiveSender(),
+        'song': "Country Roads"
+    }
+    return data
 
 def createUhrzeitMenu(dev, wzId:int):
     wt=getWackeupTime(wzId)
@@ -171,7 +183,7 @@ def mainMenu(dev):
 
 def mainScreen(dev):
     while True:
-        ms=MainScreen(dev)
+        ms=MainScreen(dev,getMainScreenData=getMainScreenData)
         ms.run()
         mainMenu(dev)
 

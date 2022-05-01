@@ -1,6 +1,7 @@
+from time import time
 import gpiodev
 from math import floor
-from datetime import datetime
+from datetime import datetime,timedelta
 WOCHENTAG=['Mo','Di','Mi','Do','Fr','Sa','So']
 
 class AbstractMenuEntry():
@@ -190,12 +191,13 @@ class ValueScreen(AbstractGpioScreen):
         self.gpdev.write_display_line(4,str)
 
 class MainScreen(AbstractGpioScreen):
-    def __init__(self, gpdev:gpiodev.GPIOBaseDev):
+    def __init__(self, gpdev:gpiodev.GPIOBaseDev, getMainScreenData):
         super().__init__(gpdev=gpdev)
         self.timeout_in_secs=0.5
         self.night_mode_off_time_secs=60
         self.displayOn=True
         self.last_input_time=datetime.now()
+        self.getMainScreenData=getMainScreenData
 
     def buttonFunc(self):
         if self.isDisplayOn(datetime.now()):
@@ -235,9 +237,32 @@ class MainScreen(AbstractGpioScreen):
             t_string = now.strftime("%H:%M:%S")
             d_string = now.strftime("%d.%m.%y")
             self.gpdev.write_display_line(1,"%s %s %s" %(t_string, weekday, d_string))
-            naechsterWecker='06:10 Mo. 10.05.22'
-            self.gpdev.write_display_line(2,"Nächster Wecker"+chr(6))
-            self.gpdev.write_display_line(3,"%s" % (naechsterWecker))
-            self.gpdev.write_display_line(4,"in 3h 10m + 55 Tagen")
+            data=self.getMainScreenData()
+            if (data['radioOn']):
+                radioLine="%s %s" % (data['station'],data['song'])
+            else:
+                radioLine=""
+            self.gpdev.write_display_line(2,radioLine)
+            if data['nextWakeupTime']==None:
+                self.gpdev.write_display_line(3,chr(6)+" keine neue Weckzeit")
+                self.gpdev.write_display_line(4,"")
+            else:
+                naechsterWecker:datetime=data['nextWakeupTime']
+                weckzeit=naechsterWecker.strftime('%H:%M')
+                weckWT=WOCHENTAG[naechsterWecker.weekday()]
+                weckdatum=naechsterWecker.strftime('%d.%m.%y')
+                delta_s=naechsterWecker.timestamp()-datetime.now().timestamp()
+                self.gpdev.write_display_line(3,"%s%s %s %s" % (chr(6),weckzeit,weckWT,weckdatum))
+
+                delta_days=(delta_s//(24*60*60))
+                delta_hours=(delta_s // (60*60)) % 24
+                delta_min=(delta_s // 60) % 60
+
+                if delta_days>0:
+                    delta_str='%d Tagen ' % (delta_days)
+                else:
+                    delta_str=""
+                delta_str="in %s%dh %dm" % (delta_str, delta_hours, delta_min)
+                self.gpdev.write_display_line(4,delta_str)
         else:
             self.gpdev.backlight(False)
