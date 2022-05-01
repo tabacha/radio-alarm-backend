@@ -1,6 +1,6 @@
 radio-alarm-backend (0.0.4) UNRELEASED; urgency=medium
 
-  * change this
+  * custom charset led display
 
  -- Sven Anders <sven@anders-hamburg.de>  Sat, 30 Apr 2022 10:45:47 +0200
 
