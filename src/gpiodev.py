@@ -55,6 +55,95 @@ LCD_5x8DOTS = 0x00
 # flags for backlight control
 LCD_BACKLIGHT = 0x08
 LCD_NOBACKLIGHT = 0x00
+CHAR_BELL=[
+     "00000",
+     "00000",
+     "00100",
+     "01110",
+     "01110",
+     "11111",
+     "11111",
+     "00100"
+    ]
+
+PROGRESS00000=[
+     "11111",
+     "00000",
+     "00000",
+     "00000",
+     "00000",
+     "00000",
+     "00000",
+     "11111"
+    ]
+
+PROGRESS10000=[
+     "11111",
+     "10000",
+     "10000",
+     "10000",
+     "10000",
+     "10000",
+     "10000",
+     "11111"
+    ]
+
+PROGRESS11000=[
+     "11111",
+     "11000",
+     "11000",
+     "11000",
+     "11000",
+     "11000",
+     "11000",
+     "11111"
+    ]
+
+PROGRESS11100=[
+     "11111",
+     "11100",
+     "11100",
+     "11100",
+     "11100",
+     "11100",
+     "11100",
+     "11111"
+    ]
+
+PROGRESS11110=[
+     "11111",
+     "11110",
+     "11110",
+     "11110",
+     "11110",
+     "11110",
+     "11110",
+     "11111"
+    ]
+
+PROGRESS11111=[
+     "11111",
+     "11111",
+     "11111",
+     "11111",
+     "11111",
+     "11111",
+     "11111",
+     "11111"
+    ]
+
+
+CUST_CHARS = [
+    PROGRESS00000,
+    PROGRESS10000,
+    PROGRESS11000,
+    PROGRESS11100,
+    PROGRESS11110,
+    PROGRESS11111,
+    CHAR_BELL,
+]
+
+CHAR_LOAD_CMD=[0x40, 0x48, 0x50, 0x58, 0x60, 0x68, 0x70, 0x78]
 
 En = 0b00000100  # Enable bit
 Rw = 0b00000010  # Read/Write bit
@@ -75,6 +164,12 @@ class GPIOBaseDev(ABC):
     def clear(self):
         pass
 
+    def get_pfeil_rechts(self):
+        return '>'
+
+    def get_pfeil_links(self):
+        return '<'
+
     @abstractmethod
     def wait_for_gpio_event(self, timeout_secs:int)->GPIO_INPUT:
         return GPIO_INPUT.TIMEOUT
@@ -90,6 +185,8 @@ class TestGPIODev(GPIOBaseDev):
     def write_display_line(self,line_no:int, line:str):
         print(' '+line[:20])
 
+    def backlight(self, state:bool):
+        pass
 
     def wait_for_gpio_event(self, timeout_secs:int) -> GPIO_INPUT:
         while True:
@@ -156,6 +253,12 @@ class RealGPIODev(GPIOBaseDev):
         self.lcd_write(LCD_DISPLAYCONTROL | LCD_DISPLAYON)
         self.lcd_write(LCD_CLEARDISPLAY)
         self.lcd_write(LCD_ENTRYMODESET | LCD_ENTRYLEFT)
+        for char_num in range(len(CUST_CHARS)):
+            self.lcd_write(CHAR_LOAD_CMD[char_num])
+            for line_num in range(8):
+                binary_str_cmd="0b000{0}".format(CUST_CHARS[char_num][line_num])
+                self.lcd_write(int(binary_str_cmd,2), Rs)
+
         sleep(0.2)
         def rotaryChange(direction):
             nonlocal self
@@ -174,6 +277,12 @@ class RealGPIODev(GPIOBaseDev):
             rotaryChange,
             switchPressed)
         self.ky040.start()
+
+    def get_pfeil_rechts(self):
+        return chr(126)
+
+    def get_pfeil_links(self):
+        return chr(127)
 
     def lcd_write_four_bits(self, data):
         self.lcd.write_cmd(data | LCD_BACKLIGHT)
@@ -202,7 +311,20 @@ class RealGPIODev(GPIOBaseDev):
         if line == 4:
             self.lcd_write(0xD4)
         for char in short_string:
-            self.lcd_write(ord(char), Rs)
+            # ä 225
+            # ß 226
+            # ö 239
+            # ü 245
+            if (char=='ä') or (char=='Ä'):
+                self.lcd_write(225,Rs)
+            elif (char=='ß'):
+                self.lcd_write(226,Rs)
+            elif (char=='ä') or (char=='Ä'):
+                self.lcd_write(239,Rs)
+            elif (char=='ü') or (char=='Ü'):
+                self.lcd_write(245,Rs)
+            else:
+                self.lcd_write(ord(char), Rs)
 
     # clear lcd and set to home
     def clear(self):

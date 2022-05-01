@@ -4,8 +4,9 @@ import gpiodev
 from time import sleep
 import argparse
 from datetime import datetime
-
+from math import floor
 WOCHENTAG=['Mo','Di','Mi','Do','Fr','Sa','So']
+
 class AbstractMenuEntry():
 
     def getTitle(self)->str:
@@ -111,7 +112,7 @@ class MenuEntryScreen(AbstractGpioScreen):
         self.choices=choices
         self.add_back_entry=add_back_entry
         if (add_back_entry):
-            self.choices.append( StaticTitleMenuEntry('zurueck',self.exitFunc))
+            self.choices.append( StaticTitleMenuEntry('zurück',self.exitFunc))
         super().__init__(gpdev)
 
     def buttonFunc(self):
@@ -149,9 +150,9 @@ class MenuEntryScreen(AbstractGpioScreen):
         for i in range(0,self.gpdev.get_number_of_lines()):
             if i+self.offset<len(self.choices):
                 if (i+self.offset)==self.idx:
-                    chooser='-> '
+                    chooser=self.gpdev.get_pfeil_rechts()+' '
                 else:
-                    chooser='   '
+                    chooser='  '
                 self.gpdev.write_display_line(i+1,chooser+self.choices[i+self.offset].getTitle())
 
 class ValueScreen(AbstractGpioScreen):
@@ -178,10 +179,15 @@ class ValueScreen(AbstractGpioScreen):
         self.gpdev.write_display_line(1,"%s %d %s" %(self.title,self.value,self.suffix))
         self.gpdev.write_display_line(2,"")
         self.gpdev.write_display_line(3,"")
-        numChars=round(20*(self.value/self.maxValue))
+        numFullChars=floor(20*(self.value/self.maxValue))
+        lastChar=floor((100*(self.value/self.maxValue)) % (100/20))
         str=""
-        for i in range(1,numChars):
-            str=str+"*"
+        for i in range(0,numFullChars):
+            str=str+chr(5)
+        if numFullChars<20:
+            str=str+chr(lastChar)
+            while len(str)<20:
+                str=str+chr(0)
         self.gpdev.write_display_line(4,str)
 
 class MainScreen(AbstractGpioScreen):
@@ -231,7 +237,7 @@ class MainScreen(AbstractGpioScreen):
             d_string = now.strftime("%d.%m.%y")
             self.gpdev.write_display_line(1,"%s %s %s" %(t_string, weekday, d_string))
             naechsterWecker='06:10 Mo. 10.05.22'
-            self.gpdev.write_display_line(2,"Naechster Wecker: ")
+            self.gpdev.write_display_line(2,"Nächster Wecker"+chr(6))
             self.gpdev.write_display_line(3,"%s" % (naechsterWecker))
             self.gpdev.write_display_line(4,"in 3h 10m + 55 Tagen")
         else:
@@ -317,7 +323,7 @@ def runSenderMenu(dev):
     senderMenu.run()
 
 def mainMenu(dev):
-    volScreen=ValueScreen(dev,'Lautstaerke',value=12)
+    volScreen=ValueScreen(dev,'Lautstärke',value=12)
     wzAuswahlMenuEntries=[]
     for wzId in range(1,4):
         wzMenu=createWeckzeitMenu(wzId,dev)
@@ -326,7 +332,7 @@ def mainMenu(dev):
         )
     wzAuwahlMenu=MenuEntryScreen(dev,wzAuswahlMenuEntries)
     menuList=[
-        StaticTitleMenuEntry('Lautstaerke',volScreen.run),
+        StaticTitleMenuEntry('Lautstärke',volScreen.run),
         StaticTitleMenuEntry('Sender',lambda: runSenderMenu(dev)),
         StaticTitleMenuEntry('Weckzeit',wzAuwahlMenu.run),
         OnOffMenuEntry('Radio an/aus', doNothing),
