@@ -4,6 +4,7 @@ import pika
 import logging
 from datetime import datetime,timedelta
 from calendar import day_name
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -64,22 +65,24 @@ def next_weekday(start_date:datetime, weekday)->datetime:
         days_ahead += 7
     return start_date + datetime.timedelta(days_ahead)
 
-def get_next_alarm_time(alarm_time, start_dt:datetime=datetime.now())->datetime:
+def get_next_alarm_time(alarm_time, start_dt:datetime)->datetime:
     if (not(alarm_time['active'])):
         return None
     hour=int(alarm_time['time'].split(':')[0])
     min=int(alarm_time['time'].split(':')[1])
     # War es am start_dt schon alarm zeit?
+    logger.info("next_alarm_h=%d",start_dt.hour)
     if ((start_dt.hour > hour) or
         ((start_dt.hour == hour) and (start_dt.minute>min)) or
-        ((start_dt.hour == hour) and (start_dt.minute==min) and (start_dt.second+start_dt.microsecond>0))):
+        ((start_dt.hour == hour) and (start_dt.minute == min) and (start_dt.second+start_dt.microsecond>0))):
         # Ja also nächster Alarm frühestens morgen um Alarm Zeit
+        logger.info('Next day')
         start_dt=start_dt+timedelta(1)
     # else:
     # Tag ist heute um alarmzeit
-
-    start_dt=start_dt.replace(hour=hour,minute=min,second=0, microsecond=0)
-
+    logger.info('start_dt1=%s', start_dt.isoformat())
+    start_dt=start_dt.replace(hour=hour, minute=min,second=0, microsecond=0)
+    logger.info('start_dt2=%s', start_dt.isoformat())
     if alarm_time['once']:
         return start_dt
     #else:
@@ -89,3 +92,18 @@ def get_next_alarm_time(alarm_time, start_dt:datetime=datetime.now())->datetime:
         if (alarm_time[lower_day_name]==True):
             return test_day
     return None
+
+def get_next_wt(wakeup_times):
+    wt_time=None
+    mywtidx=None
+    now=datetime.now(pytz.timezone('Europe/Berlin'))
+    for wtidx in wakeup_times.keys():
+        d=get_next_alarm_time(wakeup_times[wtidx],start_dt=now)
+        if (d!=None):
+            if wt_time == None:
+                wt_time=d
+                mywtidx=wtidx
+            elif wt_time>d:
+                wt_time=d
+                mywtidx=wtidx
+    return (wt_time,mywtidx)

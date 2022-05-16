@@ -5,9 +5,10 @@ from this import d
 import pika
 import json
 import secrets
-from radio_common import load_from_json, save_json, cfg_logging, get_next_alarm_time
+from radio_common import load_from_json, save_json, cfg_logging, get_next_wt
 import threading
 import logging
+import pytz
 
 logger = logging.getLogger(__name__)
 RADIO_ACTIONS_QUEUE="radio_actions"
@@ -16,6 +17,7 @@ DATA_FILENAME="/usr/share/radio/radio-server/ctx_data.json"
 ctx_data={}
 radio_station_list=[]
 t3 = None
+next_alarm_idx = None
 
 default_data = {
     'volume': 42,
@@ -112,6 +114,10 @@ def set_on_status(on:bool):
     if (ctx_data['on']!=on):
         ctx_data['on']=on
         send_broadcast('radio_state_changed',{'on':ctx_data['on'],'station':ctx_data['station']})
+        send_broadcast('dab_data', {
+            'on':ctx_data['on'],
+            'station': ctx_data['station']
+        })
         save(ctx_data)
 
 def set_dab_station_list(st_list:list):
@@ -141,6 +147,7 @@ def set_radio_state(on, station):
     if ctx_data['on']!=on:
         ctx_data['on']=on
         changed=True
+        send_broadcast('radio_state_changed',{'on':ctx_data['on'],'station':ctx_data['station']})
     if ctx_data['station']!=station:
         ctx_data['station']=station
         changed=True
@@ -151,6 +158,9 @@ def set_radio_state(on, station):
         })
         save(ctx_data)
 
+def display_start():
+    global ctx_data
+    send_broadcast('ctx_data', ctx_data, False)
 
 RABBIT_METHODS={
     'save': save,
@@ -158,6 +168,7 @@ RABBIT_METHODS={
     'radio_dab_start': radio_dab_start,
     'radio_api_start': radio_api_start,
     'radio_audio_start': radio_audio_start,
+    'display_start': display_start,
     'set_radio_state': set_radio_state,
     'set_dab_station_list': set_dab_station_list,
 }
@@ -188,33 +199,37 @@ def callback(channel, method, properties, body:bytes):
     channel.basic_ack(delivery_tag=method.delivery_tag)
 
 def start_service():
-    send_broadcast('radio_server_start', None)
-
-def get_next_wt():
     global ctx_data
-    wt_time=None
-    for wtidx in ctx_data['wakeup_times'].keys():
-        d=get_next_alarm_time(ctx_data['wakeup_times'][wtidx])
-        if (d!=None):
-            if wt_time == None:
-                wt_time=d
-            elif wt_time>d:
-                wt_time=d
-    return wt_time
+    send_broadcast('ctx_data', ctx_data, False)
 
 def wake_me_up():
-    set_radio_state(on=True)
+    global ctx_data,t3,next_alarm_idx
+    if ctx_data['wakeup_times'][next_alarm_idx]['once']:
+        ctx_data['wakeup_times'][next_alarm_idx]['active']=False
+        save(ctx_data)
+    set_on_status(on=True)
 
 def set_wakeup_thread():
-    global ctx_data,t3
+    global ctx_data,t3,next_alarm_idx
     if t3!=None:
         t3.cancel()
-    next_alarm = get_next_wt()
+    (next_alarm,next_alarm_idx) = get_next_wt(ctx_data['wakeup_times'])
     if next_alarm == None:
         t3= None
+        logger.info('No next wakeup')
     else:
-        timedelta=datetime.now()-next_alarm
-        t3=threading.Timer(timedelta.total_seconds(), wake_me_up)
+        now=datetime.now(pytz.timezone('Europe/Berlin'))
+        logger.info('tznow=%s',now.tzinfo)
+        logger.info('tznext=%s',next_alarm.tzinfo)
+        logger.info('now=%s',now.isoformat())
+        logger.info('next_alarm=%s',next_alarm.isoformat())
+        logger.info('next_timestamp=%d',next_alarm.timestamp())
+        logger.info('now_timestamp=%d',now.timestamp())
+        print(now)
+        print(next_alarm)
+        sec=next_alarm.timestamp()-now.timestamp()
+        logger.info('Next wakeup in %d seconds, wt_idx=%s', sec,next_alarm_idx)
+        t3=threading.Timer(sec, wake_me_up)
         t3.start()
 
 def main():

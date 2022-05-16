@@ -1,27 +1,29 @@
 #!/usr/bin/python3
 
+import pika
+import threading
 import gpiodev
 from time import sleep
 import argparse
 from datetime import datetime
 from math import floor
 from led_screen import StaticTitleMenuEntry, MenuEntryScreen, OnOffMenuEntry, ValueScreen, MainScreen
+from radio_common import rabbit_send_action, cfg_logging
 import re
+import json
 from pprint import pprint
+import logging
 
+logger = logging.getLogger(__name__)
+RADIO_ACTIONS_QUEUE="radio_actions"
+RADIO_BROADCAST_EXCHANGE="radio_broadcast"
 WOCHENTAG = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
-WT_DATA = {"1": {"name": "Weckzeit 1", "time": "5:42", "active": True, "monday": True,
-                 "tuesday": True, "wednesday": True, "thursday": True, "friday": True,
-                 "saturday": False, "sunday": False, "once": False, "free": False, "not_free": False},
-           "2": {"name": "Weckzeit 2", "time": "6:42", "active": False, "monday": True,
-                 "tuesday": True, "wednesday": True, "thursday": True, "friday": True,
-                 "saturday": False, "sunday": False, "once": False, "free": False, "not_free": False},
-           "3": {"name": "Weckzeit 3", "time": "23:42", "active": False, "monday": True,
-                 "tuesday": True, "wednesday": True, "thursday": True, "friday": True,
-                 "saturday": False, "sunday": False, "once": False, "free": False, "not_free": False}}
 
+ctx_data=None
+radio_stations=['NDR 2', 'NDR 90,3', 'Radio Hamburg']
 def getSender():
-    return ['NDR 2', 'NDR 90,3', 'Radio Hamburg']
+    global radio_stations
+    return radio_stations
 
 def getActiveSender():
     return 'NDR 2'
@@ -31,21 +33,24 @@ def setSender(sender:str):
     sleep(3)
 
 def getLautstaerke()->int:
+    global ctx_data
+    return ctx_data['volume']
     return 12
 
 def setLautstaerke(vol:int):
-    print(vol)
     sleep(3)
 
 def isRadioOn()->bool:
-    return True
+    global ctx_data
+    return ctx_data['on']
 
 def schalteRadioAnAus(on:bool):
     print(on)
     sleep(3)
 
 def getWackeupTime(idx:int):
-    return WT_DATA["%d" % idx]
+    global ctx_data
+    return ctx_data['wakeup_times']["%d" % idx]
 
 def setWackeupTime(idx:int,wt):
     print(idx)
@@ -56,6 +61,9 @@ def doNothing():
     pass
 
 def getMainScreenData():
+    global ctx_data
+    if ctx_data == None:
+        return None
     data={
         'nextWakeupTime':datetime(2022,5,30,6,40,00),
         'radioOn': isRadioOn(),
@@ -181,13 +189,34 @@ def mainMenu(dev):
     m=MenuEntryScreen(dev,menuList)
     m.run()
 
-def mainScreen(dev):
+
+
+def callback(ch, method, properties, body):
+    global ctx_data,radio_stations
+    logger.info('Callback %s', body)
+    data=json.loads(body)
+    if (data['label']=='radio_station_list'):
+        radio_stations=data['data']
+        logger.debug('New Radio Stations=%s',radio_stations)
+    if (data['label']=='ctx_data'):
+        new_ctx_data=data['data']
+        ctx_data=new_ctx_data
+
+myDev=None
+def mainScreen():
+    global myDev, ctx_data
     while True:
-        ms=MainScreen(dev,getMainScreenData=getMainScreenData)
+        ms=MainScreen(myDev,getMainScreenData=getMainScreenData)
         ms.run()
-        mainMenu(dev)
+        mainMenu(myDev)
+
+def start_service():
+    rabbit_send_action('display_start', None)
+    mainScreen()
 
 def main():
+    global myDev
+    cfg_logging
     parser = argparse.ArgumentParser(description='Test GPIO Menu')
     parser.add_argument('--hardware', help='Use Hardware GPIO', action='store_const',
                     const=True, default=False)
@@ -196,6 +225,20 @@ def main():
         myDev=gpiodev.RealGPIODev(addr=0x27,bus=1)
     else:
         myDev=gpiodev.TestGPIODev()
-    mainScreen(myDev)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='::1'))
 
+    channel = connection.channel()
+    channel.exchange_declare(exchange=RADIO_BROADCAST_EXCHANGE, exchange_type='fanout')
+
+    result = channel.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
+    channel.queue_bind(exchange=RADIO_BROADCAST_EXCHANGE, queue=queue_name)
+    channel.basic_consume(
+        queue=queue_name, on_message_callback=callback, auto_ack=True)
+    t1=threading.Timer(1,start_service)
+    t2=threading.Thread(target=channel.start_consuming)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
 main()

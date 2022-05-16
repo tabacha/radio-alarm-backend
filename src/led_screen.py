@@ -238,21 +238,26 @@ class MainScreen(AbstractGpioScreen):
             d_string = now.strftime("%d.%m.%y")
             self.gpdev.write_display_line(1,"%s %s %s" %(t_string, weekday, d_string))
             data=self.getMainScreenData()
-            if (data['radioOn']):
-                radioLine="%s %s" % (data['station'],data['song'])
+            if data==None:
+                self.gpdev.write_display_line(2, ". . .")
+                self.gpdev.write_display_line(3, "..starte")
+                self.gpdev.write_display_line(4, " Display...")
             else:
-                radioLine=""
-            self.gpdev.write_display_line(2,radioLine)
-            if data['nextWakeupTime']==None:
-                self.gpdev.write_display_line(3,chr(6)+" keine neue Weckzeit")
-                self.gpdev.write_display_line(4,"")
-            else:
-                naechsterWecker:datetime=data['nextWakeupTime']
-                weckzeit=naechsterWecker.strftime('%H:%M')
-                weckWT=WOCHENTAG[naechsterWecker.weekday()]
-                weckdatum=naechsterWecker.strftime('%d.%m.%y')
-                delta_s=naechsterWecker.timestamp()-datetime.now().timestamp()
-                self.gpdev.write_display_line(3,"%s%s %s %s" % (chr(6),weckzeit,weckWT,weckdatum))
+                if (data['radioOn']):
+                    radioLine="%s %s" % (data['station'],data['song'])
+                else:
+                    radioLine=""
+                self.gpdev.write_display_line(2,radioLine)
+                if data['nextWakeupTime']==None:
+                    self.gpdev.write_display_line(3,chr(6)+" keine neue Weckzeit")
+                    self.gpdev.write_display_line(4,"")
+                else:
+                    naechsterWecker:datetime=data['nextWakeupTime']
+                    weckzeit=naechsterWecker.strftime('%H:%M')
+                    weckWT=WOCHENTAG[naechsterWecker.weekday()]
+                    weckdatum=naechsterWecker.strftime('%d.%m.%y')
+                    delta_s=naechsterWecker.timestamp()-datetime.now().timestamp()
+                    self.gpdev.write_display_line(3,"%s%s %s %s" % (chr(6),weckzeit,weckWT,weckdatum))
 
                 delta_days=(delta_s//(24*60*60))
                 delta_hours=(delta_s // (60*60)) % 24
