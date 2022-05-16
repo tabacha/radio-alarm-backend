@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 
+from datetime import datetime
+from this import d
 import pika
 import json
 import secrets
-from radio_common import load_from_json, save_json, cfg_logging
+from radio_common import load_from_json, save_json, cfg_logging, get_next_alarm_time
 import threading
 import logging
 
@@ -13,6 +15,7 @@ RADIO_BROADCAST_EXCHANGE="radio_broadcast"
 DATA_FILENAME="/usr/share/radio/radio-server/ctx_data.json"
 ctx_data={}
 radio_station_list=[]
+t3 = None
 
 default_data = {
     'volume': 42,
@@ -68,8 +71,6 @@ default_data = {
     }
 }
 
-
-
 def send_broadcast(label:str,data:any, changed=True):
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host='::1'))
@@ -90,12 +91,12 @@ def radio_api_start():
     send_broadcast('radio_station_list', radio_station_list, False)
     send_broadcast('ctx_data', ctx_data, False)
 
-
 def save(data):
     global ctx_data
     save_json(DATA_FILENAME, data)
     ctx_data=data
     send_broadcast('ctx_data', ctx_data, True)
+    set_wakeup_thread()
 
 def set_volume(volume:int, smooth: bool):
     global ctx_data,logger
@@ -189,6 +190,33 @@ def callback(channel, method, properties, body:bytes):
 def start_service():
     send_broadcast('radio_server_start', None)
 
+def get_next_wt():
+    global ctx_data
+    wt_time=None
+    for wtidx in ctx_data['wakeup_times'].keys():
+        d=get_next_alarm_time(ctx_data['wakeup_times'][wtidx])
+        if (d!=None):
+            if wt_time == None:
+                wt_time=d
+            elif wt_time>d:
+                wt_time=d
+    return wt_time
+
+def wake_me_up():
+    set_radio_state(on=True)
+
+def set_wakeup_thread():
+    global ctx_data,t3
+    if t3!=None:
+        t3.cancel()
+    next_alarm = get_next_wt()
+    if next_alarm == None:
+        t3= None
+    else:
+        timedelta=datetime.now()-next_alarm
+        t3=threading.Timer(timedelta.total_seconds(), wake_me_up)
+        t3.start()
+
 def main():
     global ctx_data
     cfg_logging()
@@ -201,6 +229,7 @@ def main():
     channel.basic_consume(queue=RADIO_ACTIONS_QUEUE, exclusive=True, on_message_callback=callback)
     t1=threading.Timer(1,start_service)
     t2=threading.Thread(target=channel.start_consuming)
+    set_wakeup_thread()
     t2.start()
     t1.start()
     t1.join()
