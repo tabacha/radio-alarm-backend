@@ -1,6 +1,7 @@
 radio-alarm-backend (0.0.4) UNRELEASED; urgency=medium
 
   * custom charset led display
+  * first alarm clock steps
 
  -- Sven Anders <sven@anders-hamburg.de>  Sat, 30 Apr 2022 10:45:47 +0200
 
